@@ -1,5 +1,6 @@
 var fs = require("fs");
 var cesium = require("cesium");
+var _ = require("underscore");
 /* 
  * 用来遍历指定对象所有的属性名称和值 
  * obj 需要遍历的对象 
@@ -8,10 +9,14 @@ var cesium = require("cesium");
 function allPrpos(obj, name) {
     // 开始遍历 
     for (var p in obj) {
+        if (!validName(p)) {
+            continue;
+        }
         let outobj = {};
+        let tempobj = obj[p];
         // 方法 
-        if (typeof(obj[p]) == "function") {
-            let fn = obj[p];
+        if (typeof(tempobj) == "function") {
+            let fn = tempobj;
             let code = getParaDescrip(fn);
             let k = code.slice(code.indexOf('('), code.indexOf(')') + 1).replace(/[\r\n ]/g, ""); //去掉回车，空格
             outobj["trigger"] = name + "." + p + k;
@@ -34,8 +39,10 @@ function allPrpos(obj, name) {
                 outobj["contents"] = name + "." + p + "(" + des + ");$0";
             }
             tips.push(outobj);
-        } else if (typeof(obj[p]) == "object") {
-            // p 为属性名称，obj[p]为对应属性的值 
+            console.log(name + "." + p);
+            allPrpos(tempobj, name + "." + p);
+        } else {
+            // p 为属性名称，tempobj为对应属性的值 
             outobj["trigger"] = name + "." + p;
             //如果存在就进入下一次循环
             if (existPara(outobj["trigger"])) {
@@ -43,14 +50,16 @@ function allPrpos(obj, name) {
             }
             outobj["contents"] = name + "." + p + ";$0";
             tips.push(outobj);
-            allPrpos(obj[p], name + "." + p);
-        } else {
-            continue;
+            if (typeof(tempobj) == "object") allPrpos(tempobj, name + "." + p);
         }
     }
     // 最后显示所有的属性 
 }
 
+function validName(name){
+    let re = _.find(excepts,(a)=>name.indexOf(a)>=0);
+    return !re;
+}
 function existPara(trigger) {
     for (let i = 0; i < tips.length; i++) {
         if (tips[i].trigger == trigger) return true;
@@ -63,12 +72,17 @@ function existPara(trigger) {
  */
 function getParameterNames(fn) {
     var code = getParaDescrip(fn);
+    if (!code) {
+        return [];
+    }
     var result = code.slice(code.indexOf('(') + 1, code.indexOf(')')).match(/([^\s,]+)/g);
     return result === null ? [] : result;
 }
 
 function getParaDescrip(fn) {
     var COMMENTS = /((\/\/.*$)|(\/\*[\s\S]*?\*\/))/mg;
+    if(fn.toString()=="")
+        return ;
     return fn.toString().replace(COMMENTS, '');
 }
 String.prototype.format = String.prototype.f = function() {
@@ -83,6 +97,8 @@ String.prototype.format = String.prototype.f = function() {
 var resultJson = {};
 resultJson["scope"] = "source.js - variable.other.js";
 var tips = [];
+var excepts = ["knockout"];
+
 allPrpos(cesium, "Cesium");
 resultJson["completions"] = tips;
 fs.writeFile("cesium.sublime-completions", JSON.stringify(resultJson));
