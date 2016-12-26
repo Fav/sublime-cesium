@@ -9,7 +9,7 @@ git clone https://github.com/Fav/sublime-cesium.git
 2. 将文件夹复制到 Sublime的package 路径下  
 ![打开包目录](img/01.png)
 
-3. 使用
+3. 使用  
 ![使用](img/02.png)
 
 ## 重新生成
